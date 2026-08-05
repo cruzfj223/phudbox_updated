@@ -35,7 +35,7 @@ class BottomNav extends StatelessWidget {
         height: 44,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: active ? AppColors.accent.withOpacity(0.15) : AppColors.navyBg,
+          color: active ? AppColors.accent.withValues(alpha: 0.15) : AppColors.navyBg,
           border: Border.all(color: active ? AppColors.accent : AppColors.cardBorder),
         ),
         child: Icon(icon, size: 20, color: active ? AppColors.accent : AppColors.textMuted),
