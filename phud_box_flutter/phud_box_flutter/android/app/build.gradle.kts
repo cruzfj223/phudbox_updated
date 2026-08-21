@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.phud_box"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -18,7 +18,6 @@ android {
         applicationId = "com.example.phud_box"
         minSdk = flutter.minSdkVersion
         targetSdk = 34
-        compileSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

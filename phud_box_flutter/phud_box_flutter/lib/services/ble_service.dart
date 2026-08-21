@@ -63,7 +63,7 @@ class BleService {
 
   Future<void> connect(BluetoothDevice device) async {
     _device = device;
-    await device.connect(timeout: const Duration(seconds: 12), autoConnect: false);
+    await device.connect(license: License.nonprofit, timeout: const Duration(seconds: 12), autoConnect: false);
 
     _connSub = device.connectionState.listen((state) {
       _connectionController.add(state);
