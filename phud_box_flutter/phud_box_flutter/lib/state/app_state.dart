@@ -5,11 +5,13 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../models/batch.dart';
 import '../services/ble_service.dart';
+import '../services/db_service.dart';
 
 enum DeviceStatus { idle, disinfecting }
 
 class AppState extends ChangeNotifier {
   final BleService ble = BleService();
+  final DBService db = DBService.instance;
 
   StreamSubscription<Map<String, dynamic>>? _msgSub;
   StreamSubscription<BluetoothConnectionState>? _connSub;
@@ -25,6 +27,18 @@ class AppState extends ChangeNotifier {
   int secondsLeft = 0;
   ActiveBatch? activeBatch;
   final List<BatchLog> logs = [];
+
+  AppState() {
+    _loadPersistedLogs();
+  }
+
+  Future<void> _loadPersistedLogs() async {
+    final persisted = await db.getLogs();
+    logs
+      ..clear()
+      ..addAll(persisted);
+    notifyListeners();
+  }
 
   bool get isConnected => connectionState == BluetoothConnectionState.connected;
 
@@ -74,7 +88,9 @@ class AppState extends ChangeNotifier {
       _restartLocalTicker();
       notifyListeners();
     } else if (type == 'log_entry') {
-      logs.insert(0, BatchLog.fromJson(json));
+      final log = BatchLog.fromJson(json);
+      logs.insert(0, log);
+      db.insertLog(log);
       notifyListeners();
     }
   }
@@ -95,6 +111,12 @@ class AppState extends ChangeNotifier {
 
   Future<void> startCycle() => ble.startCycle();
   Future<void> endCycle() => ble.endCycle();
+
+  Future<void> clearLogs() async {
+    logs.clear();
+    await db.clearAll();
+    notifyListeners();
+  }
 
   @override
   void dispose() {

@@ -72,4 +72,32 @@ class BatchLog {
       error: json['error'] as String?,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'color': color,
+      'date': date,
+      'result': resultToLabel(result),
+      'instruments': instruments,
+      'time': time,
+      'uvIntensity': uvIntensity,
+      'expiry': expiry,
+      'error': error,
+    };
+  }
+
+  factory BatchLog.fromMap(Map<String, dynamic> map) {
+    return BatchLog(
+      id: map['id'] as String? ?? '--',
+      color: map['color'] as String? ?? '--',
+      date: map['date'] as String? ?? '--',
+      result: resultFromString(map['result'] as String? ?? 'FAIL'),
+      instruments: map['instruments'] as String? ?? '',
+      time: map['time'] as String? ?? '',
+      uvIntensity: map['uvIntensity'] as String? ?? '',
+      expiry: map['expiry'] as String?,
+      error: map['error'] as String?,
+    );
+  }
 }
