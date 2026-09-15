@@ -91,7 +91,8 @@ class _ScanScreenState extends State<ScanScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                       )
                     : const Icon(Icons.bluetooth_searching),
-                label: Text(_scanning ? 'Scanning...' : 'Scan for PHUD BOX'),
+                label: Text(_scanning ? 'Scanning...' : 'Scan for PHUD Box Devices',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
             const SizedBox(height: 18),
