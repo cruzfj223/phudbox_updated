@@ -50,12 +50,14 @@ class BleService {
 
   bool get isConnected => _device != null;
 
-  /// Scans for peripherals advertising the PHUD BOX service UUID.
+  /// Scans for nearby BLE peripherals. NOTE: this intentionally does NOT
+  /// filter by service UUID (withServices) - Android's OS-level scan filter
+  /// for custom 128-bit service UUIDs is unreliable across many devices/
+  /// Android versions, even when the peripheral is genuinely advertising
+  /// that UUID correctly. Scanning broadly and letting the user pick by name
+  /// from the results list (already how ScanScreen works) is more reliable.
   Stream<List<ScanResult>> scan({Duration timeout = const Duration(seconds: 8)}) {
-    FlutterBluePlus.startScan(
-      withServices: [BleProtocol.serviceUuid],
-      timeout: timeout,
-    );
+    FlutterBluePlus.startScan(timeout: timeout);
     return FlutterBluePlus.scanResults;
   }
 
@@ -63,40 +65,51 @@ class BleService {
 
   Future<void> connect(BluetoothDevice device) async {
     _device = device;
-    await device.connect(license: License.nonprofit, timeout: const Duration(seconds: 12), autoConnect: false);
-
-    _connSub = device.connectionState.listen((state) {
-      _connectionController.add(state);
-      if (state == BluetoothConnectionState.disconnected) {
-        _cleanupAfterDisconnect();
-      }
-    });
-
-    // Ask for a bigger MTU (Android only; ignored elsewhere) so JSON
-    // payloads mostly fit in a single notification/write.
     try {
-      await device.requestMtu(517);
+      await device.connect(
+        license: License.nonprofit,
+        timeout: const Duration(seconds: 12),
+        autoConnect: false,
+      );
+
+      _connSub = device.connectionState.listen((state) {
+        _connectionController.add(state);
+        if (state == BluetoothConnectionState.disconnected) {
+          _cleanupAfterDisconnect();
+        }
+      });
+
+      // Discover services before MTU negotiation. On Android, requesting MTU
+      // first can race with GATT discovery and return an incomplete service list.
+      final services = await device.discoverServices();
+      final service = services.firstWhere(
+        (s) => s.uuid == BleProtocol.serviceUuid,
+        orElse: () => throw Exception(
+            'PHUD BOX GATT service not found on this device. Check firmware UUIDs.'),
+      );
+
+      _telemetryChar = service.characteristics.firstWhere(
+        (c) => c.uuid == BleProtocol.telemetryCharUuid,
+      );
+      _commandChar = service.characteristics.firstWhere(
+        (c) => c.uuid == BleProtocol.commandCharUuid,
+      );
+
+      await _telemetryChar!.setNotifyValue(true);
+      _notifySub = _telemetryChar!.lastValueStream.listen(_onChunkReceived);
+
+      // Negotiate a larger MTU after discovery/subscription. This is best
+      // effort; sendCommand() still chunks safely if negotiation is unsupported.
+      try {
+        await device.requestMtu(517);
+      } catch (_) {
+        // Not supported on every platform/peripheral.
+      }
     } catch (_) {
-      // MTU negotiation isn't supported on every platform/peripheral;
-      // the newline-delimited buffering below handles fragmentation anyway.
+      await device.disconnect();
+      _cleanupAfterDisconnect();
+      rethrow;
     }
-
-    final services = await device.discoverServices();
-    final service = services.firstWhere(
-      (s) => s.uuid == BleProtocol.serviceUuid,
-      orElse: () => throw Exception(
-          'PHUD BOX GATT service not found on this device. Check firmware UUIDs.'),
-    );
-
-    _telemetryChar = service.characteristics.firstWhere(
-      (c) => c.uuid == BleProtocol.telemetryCharUuid,
-    );
-    _commandChar = service.characteristics.firstWhere(
-      (c) => c.uuid == BleProtocol.commandCharUuid,
-    );
-
-    await _telemetryChar!.setNotifyValue(true);
-    _notifySub = _telemetryChar!.lastValueStream.listen(_onChunkReceived);
   }
 
   void _onChunkReceived(List<int> chunk) {

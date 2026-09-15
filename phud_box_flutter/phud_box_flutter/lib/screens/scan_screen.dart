@@ -29,6 +29,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future<void> _startScan() async {
     await _ensurePermissions();
+    if (!mounted) return;
     setState(() {
       _results = [];
       _scanning = true;
@@ -91,8 +92,10 @@ class _ScanScreenState extends State<ScanScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                       )
                     : const Icon(Icons.bluetooth_searching),
-                label: Text(_scanning ? 'Scanning...' : 'Scan for PHUD Box Devices',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                label: Text(
+                  _scanning ? 'Scanning...' : 'Scan for PHUD Box Devices',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
             const SizedBox(height: 18),
@@ -112,8 +115,11 @@ class _ScanScreenState extends State<ScanScreen> {
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (context, i) {
                         final r = _results[i];
+                        final advertisedName = r.advertisementData.advName;
                         final name = r.device.platformName.isNotEmpty
-                            ? r.device.platformName
+                          ? r.device.platformName
+                          : advertisedName.isNotEmpty
+                            ? advertisedName
                             : 'Unnamed device';
                         final id = r.device.remoteId.str;
                         return Container(
